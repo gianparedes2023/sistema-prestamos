@@ -17,6 +17,7 @@ let selectedReceiptId = null;
 let authToken = localStorage.getItem(TOKEN_KEY) || "";
 let currentUser = null;
 let remoteSaveTimer = null;
+let monthlyStatusFilter = "";
 
 const titles = {
   dashboard: ["Dashboard", "Indicadores actualizados a la fecha de consulta."],
@@ -496,16 +497,17 @@ function wireForms() {
     button.addEventListener("click", () => {
       document.querySelectorAll(".status-tab").forEach(tab => tab.classList.remove("active"));
       button.classList.add("active");
-      byId("controlStatusFilter").value = button.dataset.monthStatus;
+      monthlyStatusFilter = button.dataset.monthStatus || "";
       renderMonthlyControl();
     });
   });
 }
 
 function wireFilters() {
-  ["clientSearch", "loanFilter", "loanClientFilter", "reportClient", "reportStatus", "reportMode", "reportCurrency", "debtClient", "controlStatusFilter"].forEach(id => {
-    byId(id).addEventListener("input", renderAll);
-    byId(id).addEventListener("change", renderAll);
+  ["clientSearch", "loanFilter", "loanClientFilter", "reportClient", "reportStatus", "reportMode", "reportCurrency", "debtClient"].forEach(id => {
+    const element = byId(id);
+    element.addEventListener("input", renderAll);
+    element.addEventListener("change", renderAll);
   });
 }
 
@@ -906,7 +908,7 @@ function renderMonthlyControl() {
   const month = byId("controlMonth").value || today().slice(0, 7);
   const asOf = byId("asOfDate").value || today();
   const range = monthlyControlRange(month, asOf);
-  const statusFilter = byId("controlStatusFilter").value;
+  const statusFilter = monthlyStatusFilter;
   document.querySelectorAll(".status-tab").forEach(tab => {
     tab.classList.toggle("active", tab.dataset.monthStatus === statusFilter);
   });
