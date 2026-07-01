@@ -40,8 +40,8 @@
           <span>Fecha consulta</span>
           <input id="asOfDate" type="date">
         </label>
-        <button id="seedBtn" class="ghost">Datos demo</button>
-        <button id="resetBtn" class="danger">Limpiar</button>
+        <button id="seedBtn" class="ghost hidden" type="button" hidden>Datos demo</button>
+        <button id="resetBtn" class="danger hidden" type="button" hidden>Limpiar</button>
       </div>
     </header>
 
@@ -93,15 +93,7 @@
               <span>Mes de control</span>
               <input id="controlMonth" type="month">
             </label>
-            <select id="controlStatusFilter">
-              <option value="">Todos</option>
-              <option>Pagado</option>
-              <option>Al dia</option>
-              <option>Pago parcial</option>
-              <option>En mora</option>
-              <option>Sin pago</option>
-              <option>Vence este mes</option>
-            </select>
+            <input id="controlStatusFilter" type="hidden" value="">
           </div>
         </div>
         <div class="metric-grid monthly-metrics" id="monthlyMetrics"></div>
