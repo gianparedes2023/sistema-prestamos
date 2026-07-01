@@ -844,20 +844,27 @@ function refreshSelects() {
   byId("reportClient").innerHTML = `<option value="">Todos</option>${clientOptions}`;
   byId("loanClientFilter").innerHTML = `<option value="">Todos los clientes</option>${clientOptions}`;
   byId("monthlyClientFilter").innerHTML = monthlyClientFilterOptions();
-  byId("paymentLoan").innerHTML = state.loans
-    .filter(loan => {
-      const calc = calculateLoanDebt(loan, asOf);
-      const status = effectiveLoanStatus(loan, calc);
-      return status !== "Anulado" && status !== "Pagado";
-    })
-    .map((loan, index) => `<option value="${loan.id}">${escapeHtml(paymentLoanOptionLabel(loan, index))}</option>`)
-    .join("") || `<option value="">Sin prestamos activos</option>`;
+  byId("paymentLoan").innerHTML = paymentLoanOptions(asOf, currentMonthlyClientFilter);
   restoreSelectValue("loanClient", currentLoanClient);
   restoreSelectValue("debtClient", currentDebtClient);
   restoreSelectValue("reportClient", currentReportClient);
   restoreSelectValue("loanClientFilter", currentLoanClientFilter);
   restoreSelectValue("monthlyClientFilter", currentMonthlyClientFilter);
   restoreSelectValue("paymentLoan", currentPaymentLoan);
+}
+
+function paymentLoanOptions(asOf, clientFilter = "") {
+  const loans = state.loans
+    .filter(loan => {
+      const calc = calculateLoanDebt(loan, asOf);
+      const status = effectiveLoanStatus(loan, calc);
+      return status !== "Anulado" && status !== "Pagado";
+    })
+    .filter(loan => !clientFilter || loan.clientId === clientFilter);
+
+  return loans
+    .map((loan, index) => `<option value="${loan.id}">${escapeHtml(paymentLoanOptionLabel(loan, index))}</option>`)
+    .join("") || `<option value="">${clientFilter ? "Sin prestamos activos para este cliente" : "Sin prestamos activos"}</option>`;
 }
 
 function paymentLoanOptionLabel(loan, index = 0) {
@@ -1579,9 +1586,15 @@ function selectDebtClient(id) {
 }
 
 function focusPayment(id) {
+  const loan = state.loans.find(item => item.id === id);
+  if (!loan) return;
   document.querySelector('[data-view="control"]').click();
+  byId("monthlyClientFilter").value = loan.clientId;
+  refreshSelects();
   byId("paymentLoan").value = id;
   byId("paymentDate").value = byId("asOfDate").value || today();
+  renderMonthlyControl();
+  renderPayments();
   renderPaymentPreview();
   byId("paymentForm").scrollIntoView({ behavior: "smooth", block: "center" });
 }
