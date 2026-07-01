@@ -1,0 +1,5 @@
+outputs/sistema-prestamos/backend/data/
+outputs/sistema-prestamos/backend/*.log
+outputs/sistema-prestamos/Credenciales.txt
+work/
+*.log

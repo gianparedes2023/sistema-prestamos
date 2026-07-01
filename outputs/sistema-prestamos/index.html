@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema de Prestamos</title>
+  <link rel="stylesheet" href="styles.css?v=20260701-26">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">P</span>
+      <div>
+        <strong>Prestamos</strong>
+        <small>Control financiero</small>
+      </div>
+    </div>
+    <nav class="nav" aria-label="Principal">
+      <button class="nav-item" data-view="dashboard">Dashboard</button>
+      <button class="nav-item active" data-view="control">Control mensual</button>
+      <button class="nav-item" data-view="clientes">Clientes</button>
+      <button class="nav-item" data-view="prestamos">Prestamos</button>
+      <button class="nav-item" data-view="deuda">Deuda cliente</button>
+      <button class="nav-item" data-view="reportes">Reportes</button>
+      <button class="nav-item" data-view="seguridad">Seguridad</button>
+    </nav>
+  </aside>
+
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1 id="viewTitle">Control mensual</h1>
+        <p id="viewSubtitle">Prestamos del mes, pagos recibidos y mora operativa.</p>
+      </div>
+      <div class="top-actions">
+        <div class="auth-pill" id="authStatus">Modo local</div>
+        <button id="loginBtn" class="ghost">Ingresar</button>
+        <button id="logoutBtn" class="ghost hidden" type="button">Salir</button>
+        <label class="field compact">
+          <span>Fecha consulta</span>
+          <input id="asOfDate" type="date">
+        </label>
+        <button id="seedBtn" class="ghost">Datos demo</button>
+        <button id="resetBtn" class="danger">Limpiar</button>
+      </div>
+    </header>
+
+    <section id="dashboard" class="view">
+      <div class="metric-grid" id="metrics"></div>
+      <div class="split">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Prestamos por estado</h2>
+          </div>
+          <div id="stateBars" class="dashboard-pie pie-summary"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Deuda pendiente por cliente</h2>
+          </div>
+          <div id="clientDebtBars" class="bars"></div>
+        </section>
+      </div>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Prestamos activos</h2>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Desembolso</th>
+                <th>Modalidad</th>
+                <th>Capital pendiente</th>
+                <th>Interes pendiente</th>
+                <th>Deuda actual</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="activeLoansTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="control" class="view active">
+      <section class="panel control-summary">
+        <div class="panel-head">
+          <h2>Control mensual</h2>
+          <div class="control-toolbar">
+            <label class="field compact inline-field">
+              <span>Mes de control</span>
+              <input id="controlMonth" type="month">
+            </label>
+            <select id="controlStatusFilter">
+              <option value="">Todos</option>
+              <option>Pagado</option>
+              <option>Al dia</option>
+              <option>Pago parcial</option>
+              <option>En mora</option>
+              <option>Sin pago</option>
+              <option>Vence este mes</option>
+            </select>
+          </div>
+        </div>
+        <div class="metric-grid monthly-metrics" id="monthlyMetrics"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Prestamos del mes</h2>
+          <div class="status-tabs" id="monthlyStatusTabs">
+            <button class="status-tab active" data-month-status="">Todos</button>
+            <button class="status-tab" data-month-status="Pagado">Pagados</button>
+            <button class="status-tab" data-month-status="En mora">En mora</button>
+            <button class="status-tab" data-month-status="Sin pago">Sin pago</button>
+            <button class="status-tab" data-month-status="Pago parcial">Pago parcial</button>
+            <button class="status-tab" data-month-status="Vence este mes">Vencen este mes</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Desembolso</th>
+                <th>Monto</th>
+                <th>Interes</th>
+                <th>Modalidad</th>
+                <th>Pagado este mes</th>
+                <th>Interes pendiente</th>
+                <th>Saldo actual</th>
+                <th>Vencimiento</th>
+                <th>Dias mora</th>
+                <th>Estado mensual</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyControlTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="split monthly-payment-area">
+        <form id="paymentForm" class="panel form-panel monthly-payment-form">
+          <div class="panel-head">
+            <h2>Registrar pago</h2>
+          </div>
+          <div class="form-grid">
+            <label class="field wide"><span>Prestamo</span><select id="paymentLoan" required></select></label>
+            <label class="field"><span>Fecha pago</span><input id="paymentDate" type="date" required></label>
+            <label class="field"><span>Monto pagado</span><input id="paymentAmount" type="number" min="0" step="0.01" required></label>
+            <label class="field"><span>Aplicacion</span><select id="paymentApply"><option value="auto">Interes luego capital</option><option value="capital">Solo capital</option><option value="interest">Solo interes</option></select></label>
+            <label class="field"><span>Medio pago</span><select id="paymentMethod"><option>Efectivo</option><option>Transferencia</option><option>Yape</option><option>Plin</option><option>Banco</option><option>Otro</option></select></label>
+            <label class="field"><span>Operacion</span><input id="operationNumber"></label>
+            <label class="field wide"><span>Observacion</span><textarea id="paymentNote" rows="2"></textarea></label>
+          </div>
+          <div id="paymentPreview" class="preview"></div>
+          <button class="primary" type="submit">Registrar pago</button>
+        </form>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Pagos del mes</h2>
+            <button id="printReceiptBtn" class="ghost">Comprobante</button>
+          </div>
+          <div id="paymentsList" class="list"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="clientes" class="view">
+      <div class="grid-two">
+        <form id="clientForm" class="panel form-panel">
+          <div class="panel-head">
+            <h2>Cliente</h2>
+            <button type="button" id="newClientBtn" class="ghost">Nuevo</button>
+          </div>
+          <input type="hidden" id="clientId">
+          <div class="form-grid">
+            <label class="field"><span>Tipo documento</span><select id="docType"><option>DNI</option><option>RUC</option><option>CE</option><option>Pasaporte</option></select></label>
+            <label class="field"><span>Numero documento</span><input id="docNumber" required></label>
+            <label class="field wide"><span>Nombres y apellidos</span><input id="clientName" required></label>
+            <label class="field"><span>Telefono</span><input id="phone"></label>
+            <label class="field"><span>Correo</span><input id="email" type="email"></label>
+            <label class="field wide"><span>Direccion</span><input id="address"></label>
+            <label class="field"><span>Estado</span><select id="clientStatus"><option>Activo</option><option>Inactivo</option></select></label>
+            <label class="field"><span>Fecha registro</span><input id="clientDate" type="date"></label>
+          </div>
+          <button class="primary" type="submit">Guardar cliente</button>
+        </form>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Clientes</h2>
+            <input id="clientSearch" class="search" placeholder="Buscar nombre o documento">
+          </div>
+          <div id="clientsList" class="list"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="prestamos" class="view">
+      <div class="grid-two loan-layout">
+        <div id="loanFormOverlay" class="modal-overlay hidden" hidden></div>
+        <form id="loanForm" class="panel form-panel loan-form-panel hidden" hidden>
+          <div class="panel-head">
+            <h2 id="loanFormTitle">Nuevo prestamo</h2>
+            <button type="button" id="closeLoanFormBtn" class="ghost">Cerrar</button>
+          </div>
+          <input type="hidden" id="loanId">
+          <div class="form-tabs">
+            <button type="button" class="form-tab active" data-loan-tab="conditions">Condiciones</button>
+            <button type="button" class="form-tab" data-loan-tab="payments">Pagos</button>
+            <button type="button" id="loanScheduleTabBtn" class="form-tab hidden" data-loan-tab="schedule">Cronograma</button>
+          </div>
+          <div id="loanConditionsTab" class="loan-tab-panel active">
+            <div class="form-grid">
+              <label class="field wide"><span>Cliente</span><select id="loanClient" required></select></label>
+              <label class="field"><span>Fecha desembolso</span><input id="disbursementDate" type="date" required></label>
+              <label class="field"><span>Monto desembolsado</span><input id="principal" type="number" min="0" step="0.01" required></label>
+              <label class="field"><span>Moneda</span><select id="currency"><option value="PEN">S/ Soles</option><option value="USD">$ Dolares</option></select></label>
+              <label class="field"><span>% interes</span><input id="interestRate" type="number" min="0" step="0.01" value="0"></label>
+              <label class="field"><span>Tipo interes</span><select id="interestType"><option>Sin interes</option><option>Interes fijo</option><option>Interes porcentual mensual</option><option>Interes porcentual diario</option><option>Interes porcentual quincenal</option><option>Interes personalizado</option></select></label>
+              <label class="field"><span>Frecuencia de cobro</span><select id="loanMode"><option>Pago libre / flexible</option><option>Pago diario</option><option>Pago semanal</option><option>Pago quincenal</option><option>Pago mensual</option><option>Sin cronograma</option><option>Con cronograma</option></select></label>
+              <select id="hasSchedule" hidden><option value="false">No</option><option value="true">Si</option></select>
+              <label class="field"><span>Cantidad pagos/cuotas</span><input id="installments" type="number" min="0" step="1" value="0"></label>
+              <input id="termDays" type="hidden" value="0">
+              <input id="firstPayDate" type="hidden">
+              <input id="estimatedPayDate" type="hidden">
+              <label class="field"><span>Estado</span><select id="loanStatus"><option>Vigente</option><option>Pagado</option><option>Vencido</option><option>Anulado</option></select></label>
+              <label class="field wide"><span>Observacion</span><textarea id="loanNote" rows="3"></textarea></label>
+            </div>
+            <div id="loanSummary" class="loan-summary"></div>
+            <button class="primary" type="submit">Guardar prestamo</button>
+          </div>
+          <div id="loanPaymentsTab" class="loan-tab-panel hidden">
+            <input type="hidden" id="loanPaymentId">
+            <div class="table-wrap loan-payments-wrap">
+              <table>
+                <thead><tr><th>Fecha</th><th>Monto</th><th>Aplicacion</th><th>Medio</th><th>Operacion</th><th>Nota</th><th>Accion</th></tr></thead>
+                <tbody id="loanPaymentEditor" class="loan-payment-editor">
+                  <tr class="editor-row">
+                    <td><input id="loanPaymentDate" type="date"></td>
+                    <td><input id="loanPaymentAmount" type="number" min="0" step="0.01" placeholder="0.00"></td>
+                    <td><select id="loanPaymentApply"><option value="auto">Interes luego capital</option><option value="capital">Solo capital</option><option value="interest">Solo interes</option></select></td>
+                    <td><select id="loanPaymentMethod"><option>Efectivo</option><option>Transferencia</option><option>Yape</option><option>Plin</option><option>Banco</option><option>Otro</option></select></td>
+                    <td><input id="loanPaymentOperation"></td>
+                    <td><input id="loanPaymentNote"></td>
+                    <td>
+                      <div class="table-actions">
+                        <button type="button" id="saveLoanPaymentBtn" class="pay-action">Guardar</button>
+                        <button type="button" id="clearLoanPaymentBtn">Nuevo</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr><td colspan="7"><div id="loanPaymentPreview" class="preview grid-preview"></div></td></tr>
+                </tbody>
+                <tbody id="loanPaymentsTable"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="loanScheduleTab" class="loan-tab-panel hidden">
+            <div class="table-wrap loan-schedule-wrap">
+              <table>
+                <thead><tr><th>Prestamo</th><th>Cuota</th><th>Vencimiento</th><th>Monto</th><th>Pagado</th><th>Saldo</th><th>Estado</th></tr></thead>
+                <tbody id="loanScheduleTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </form>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Prestamos registrados</h2>
+            <div class="loan-head-actions">
+              <div class="loan-filters">
+                <select id="loanClientFilter"></select>
+                <select id="loanFilter"><option value="">Todos</option><option>Vigente</option><option>Vencido</option><option>Pagado</option><option>Anulado</option></select>
+              </div>
+              <button type="button" id="newLoanBtn" class="primary inline-primary">Nuevo prestamo</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="loans-table">
+              <thead>
+                <tr>
+                  <th>Codigo</th>
+                  <th>Cliente</th>
+                  <th>Fecha</th>
+                  <th>Monto</th>
+                  <th>Frecuencia</th>
+                  <th>Cuotas</th>
+                  <th>Pagado</th>
+                  <th>Saldo</th>
+                  <th>Mora</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="loansList"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="pagos" class="view">
+      <section class="panel empty-state-panel">
+        <h2>Pagos</h2>
+        <p>Los pagos se registran desde Control mensual para trabajar prestamos y cobranzas en una sola pantalla.</p>
+        <button type="button" class="primary" onclick="goMonthlyControl()">Abrir control mensual</button>
+      </section>
+    </section>
+
+    <section id="deuda" class="view">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Consulta por cliente</h2>
+          <div class="row-actions">
+            <select id="debtClient"></select>
+            <button id="recalcDebtBtn" class="primary">Calcular deuda a la fecha</button>
+          </div>
+        </div>
+        <div id="clientDebtSummary" class="metric-grid compact-metrics"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Prestamo</th><th>Desembolso</th><th>Capital pendiente</th><th>Interes pendiente</th><th>Deuda actual</th><th>Ultimo pago</th><th>Atraso</th></tr></thead>
+            <tbody id="clientDebtTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="reportes" class="view">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Reportes</h2>
+          <div class="row-actions">
+            <button id="exportExcelBtn" class="ghost">Excel</button>
+            <button id="exportPdfBtn" class="ghost">PDF</button>
+          </div>
+        </div>
+        <div class="filters">
+          <label class="field"><span>Cliente</span><select id="reportClient"></select></label>
+          <label class="field"><span>Estado</span><select id="reportStatus"><option value="">Todos</option><option>Vigente</option><option>Vencido</option><option>Pagado</option><option>Anulado</option></select></label>
+          <label class="field"><span>Modalidad</span><select id="reportMode"><option value="">Todas</option><option>Sin cronograma</option><option>Con cronograma</option><option>Pago diario</option><option>Pago semanal</option><option>Pago quincenal</option><option>Pago mensual</option><option>Pago libre / flexible</option></select></label>
+          <label class="field"><span>Moneda</span><select id="reportCurrency"><option value="">Todas</option><option value="PEN">S/ Soles</option><option value="USD">$ Dolares</option></select></label>
+        </div>
+        <div class="table-wrap">
+          <table id="reportTable">
+            <thead><tr><th>Cliente</th><th>Prestamo</th><th>Fecha</th><th>Estado</th><th>Modalidad</th><th>Moneda</th><th>Desembolsado</th><th>Pagado</th><th>Capital pendiente</th><th>Interes pendiente</th><th>Deuda actual</th></tr></thead>
+            <tbody id="reportsTable"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="seguridad" class="view">
+      <div class="grid-two">
+        <form id="userForm" class="panel form-panel">
+          <div class="panel-head">
+            <h2>Usuarios y roles</h2>
+          </div>
+          <div class="form-grid">
+            <label class="field"><span>Usuario</span><input id="userName" required></label>
+            <label class="field"><span>Clave inicial</span><input id="userPassword" type="password" autocomplete="new-password"></label>
+            <label class="field"><span>Rol</span><select id="userRole"><option>Administrador</option><option>Operador</option><option>Consulta</option></select></label>
+            <label class="field"><span>Estado</span><select id="userStatus"><option>Activo</option><option>Inactivo</option></select></label>
+          </div>
+          <button class="primary" type="submit">Guardar usuario</button>
+        </form>
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Auditoria</h2>
+          </div>
+          <div id="auditList" class="list"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="loginOverlay" class="login-overlay hidden" hidden>
+    <form id="loginForm" class="login-panel" autocomplete="on">
+      <div class="login-brand">
+        <span class="brand-mark">P</span>
+        <div>
+          <strong>Sistema de Prestamos</strong>
+          <small>Acceso seguro</small>
+        </div>
+      </div>
+      <div class="login-copy">
+        <h2>Iniciar sesion</h2>
+        <p>Ingrese con su usuario autorizado para gestionar prestamos, pagos y reportes.</p>
+      </div>
+      <label class="field">
+        <span>Correo o usuario</span>
+        <input id="loginUser" name="username" autocomplete="username" placeholder="admin@empresa.com" required>
+      </label>
+      <label class="field">
+        <span>Clave</span>
+        <input id="loginPassword" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <div id="loginError" class="login-error hidden"></div>
+      <button id="loginSubmitBtn" class="primary login-submit" type="submit">Ingresar</button>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20260701-26"></script>
+  <script src="app.js?v=20260701-26"></script>
+</body>
+</html>
