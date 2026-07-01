@@ -307,7 +307,12 @@ async function loadSupabaseState() {
     error = retry.error;
   }
 
-  if (error) throw new Error(`Error de Supabase: ${error.message}`);
+  if (error) {
+    if (isSchemaCacheError(error)) {
+      throw new Error("Supabase aun no actualiza el cache de tablas. Ejecuta supabase-reload-schema-cache.sql y espera 60 segundos.");
+    }
+    throw new Error(`Error de Supabase: ${error.message}`);
+  }
 
   const remoteState = normalizeState(data?.data || {});
   if (isStateEmpty(remoteState) && !isStateEmpty(localState) && canRemoteWrite()) {
