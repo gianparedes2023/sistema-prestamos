@@ -843,7 +843,7 @@ function refreshSelects() {
   byId("debtClient").innerHTML = clientOptions || `<option value="">Sin clientes</option>`;
   byId("reportClient").innerHTML = `<option value="">Todos</option>${clientOptions}`;
   byId("loanClientFilter").innerHTML = `<option value="">Todos los clientes</option>${clientOptions}`;
-  byId("monthlyClientFilter").innerHTML = `<option value="">Todos los clientes</option>${clientOptions}`;
+  byId("monthlyClientFilter").innerHTML = monthlyClientFilterOptions();
   byId("paymentLoan").innerHTML = state.loans
     .filter(loan => {
       const calc = calculateLoanDebt(loan, asOf);
@@ -862,6 +862,24 @@ function refreshSelects() {
 
 function paymentLoanOptionLabel(loan, index = 0) {
   return `${loanCode(loan, index)} - ${clientName(loan.clientId)} - ${formatDateShort(loan.disbursementDate)} - ${formatCurrency(loan.principal, loan.currency)}`;
+}
+
+function monthlyClientFilterOptions() {
+  const idsFromLoans = Array.from(new Set(
+    state.loans
+      .filter(loan => loan.status !== "Anulado")
+      .map(loan => loan.clientId)
+      .filter(Boolean)
+  ));
+  const ids = idsFromLoans.length ? idsFromLoans : state.clients.map(client => client.id);
+  const options = ids
+    .map(clientId => {
+      const client = state.clients.find(item => item.id === clientId);
+      const label = client ? `${client.name} - ${client.docNumber}` : clientName(clientId);
+      return `<option value="${clientId}">${escapeHtml(label)}</option>`;
+    })
+    .join("");
+  return `<option value="">Todos los clientes</option>${options}`;
 }
 
 function renderDashboard() {
