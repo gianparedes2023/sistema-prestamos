@@ -953,7 +953,7 @@ function renderMonthlyControl() {
   const disbursedInMonth = rows.filter(row => isDateInControlRange(row.loan.disbursementDate, range));
   const paidInMonth = rows.filter(row => row.monthStatus === "Pagado");
   const lateRows = rows.filter(row => row.monthStatus === "En mora");
-  const monthPayments = state.payments.filter(payment => payment.status === "Activo" && isDateInControlRange(payment.date, range));
+  const monthPayments = monthlyPaymentsForRange(range, clientFilter);
 
   byId("monthlyMetrics").innerHTML = [
     metric("Prestamos desembolsados", disbursedInMonth.length, formatCurrency(sum(disbursedInMonth.map(row => row.loan.principal)), "PEN")),
@@ -1079,9 +1079,8 @@ function renderPayments() {
   const month = byId("controlMonth").value || today().slice(0, 7);
   const asOf = byId("asOfDate").value || today();
   const range = monthlyControlRange(month, asOf);
-  const payments = range.hasStarted
-    ? state.payments.filter(payment => payment.status === "Activo" && isDateInControlRange(payment.date, range))
-    : [];
+  const clientFilter = byId("monthlyClientFilter").value;
+  const payments = monthlyPaymentsForRange(range, clientFilter);
   const selectedPayment = payments.find(item => item.id === selectedReceiptId);
   byId("printReceiptBtn").textContent = selectedPayment ? `Comprobante ${selectedPayment.id}` : "Comprobante";
   byId("paymentsList").innerHTML = `
@@ -1121,6 +1120,13 @@ function renderPayments() {
         </tbody>
       </table>
     </div>`;
+}
+
+function monthlyPaymentsForRange(range, clientFilter = "") {
+  if (!range.hasStarted) return [];
+  return state.payments
+    .filter(payment => payment.status === "Activo" && isDateInControlRange(payment.date, range))
+    .filter(payment => !clientFilter || payment.clientId === clientFilter);
 }
 
 function renderDebtView() {
