@@ -736,8 +736,10 @@ function savePayment(event) {
   const amount = Number(byId("paymentAmount").value || 0);
   const asOf = byId("paymentDate").value;
   const before = calculateLoanDebt(loan, asOf);
-  const applied = applyPayment(amount, before, byId("paymentApply").value);
+  const applyMode = byId("paymentApply").value;
+  const applied = applyPayment(amount, before, applyMode);
   const payment = buildPaymentRecord(loan, amount, asOf, applied, before, {
+    applyMode,
     method: byId("paymentMethod").value,
     operationNumber: byId("operationNumber").value.trim(),
     note: byId("paymentNote").value.trim()
@@ -754,7 +756,8 @@ function savePayment(event) {
 
 function buildPaymentRecord(loan, amount, date, applied, before, details = {}) {
   const afterCapital = Math.max(0, before.capitalPending - applied.capital);
-  const afterInterest = Math.max(0, before.interestPending - applied.interest);
+  const interestBefore = paymentInterestDue(before);
+  const afterInterest = Math.max(0, interestBefore - applied.interest);
   return {
     id: uid("PAG"),
     loanId: loan.id,
@@ -763,11 +766,12 @@ function buildPaymentRecord(loan, amount, date, applied, before, details = {}) {
     amount,
     appliedCapital: applied.capital,
     appliedInterest: applied.interest,
+    applyMode: details.applyMode || "auto",
     method: details.method || "Efectivo",
     operationNumber: details.operationNumber || "",
     capitalBefore: before.capitalPending,
     capitalAfter: afterCapital,
-    interestBefore: before.interestPending,
+    interestBefore,
     interestAfter: afterInterest,
     note: details.note || "",
     status: "Activo",
@@ -1019,7 +1023,7 @@ function monthlyLoanStatus(loan, calc, paidThisMonth, dueDate, dueInMonth, payme
   const lastPaymentInMonth = payments.length ? payments[payments.length - 1] : null;
   if (calc.totalDebt <= 0 && (lastPaymentInMonth || loan.status === "Pagado")) return "Pagado";
   if (calc.interestPending <= 0 && paidThisMonth > 0) return "Al dia";
-  if (daysLate > 0 || loan.status === "Vencido") return "En mora";
+  if (daysLate > 0) return "En mora";
   if (paidThisMonth > 0) return "Pago parcial";
   if (dueInMonth) return "Vence este mes";
   if (dueDate && parseDate(dueDate) > range.cutoff) return "Al dia";
@@ -1361,8 +1365,10 @@ function saveLoanFormPayment() {
   const id = byId("loanPaymentId").value;
   const date = byId("loanPaymentDate").value || today();
   const before = calculateLoanDebt(loan, date, id);
-  const applied = applyPayment(amount, before, byId("loanPaymentApply").value);
+  const applyMode = byId("loanPaymentApply").value;
+  const applied = applyPayment(amount, before, applyMode);
   const payment = buildPaymentRecord(loan, amount, date, applied, before, {
+    applyMode,
     method: byId("loanPaymentMethod").value,
     operationNumber: byId("loanPaymentOperation").value.trim(),
     note: byId("loanPaymentNote").value.trim()
@@ -1412,12 +1418,15 @@ function calculateLoanDebt(loan, asOfDate, excludePaymentId = "") {
   const paidOffDate = findLoanPaidOffDate(loan, loanPayments);
   const interestCutoffDate = paidOffDate && parseDate(paidOffDate) < asOf ? paidOffDate : asOfDate;
   const interestElapsedDays = Math.max(0, daysBetween(start, parseDate(interestCutoffDate)));
+  const ledger = calculatePaymentLedger(loan, loanPayments);
   const totalPaid = sum(loanPayments.map(payment => payment.amount));
-  const capitalPaid = sum(loanPayments.map(payment => payment.appliedCapital));
-  const interestPaid = sum(loanPayments.map(payment => payment.appliedInterest));
+  const capitalPaid = ledger.capitalPaid;
+  const interestPaid = ledger.interestPaid;
   const generatedInterest = calculateGeneratedInterest(loan, interestElapsedDays, interestCutoffDate);
+  const payableGeneratedInterest = calculateGeneratedInterestForPayment(loan, asOfDate);
   const capitalPending = Math.max(0, loan.principal - capitalPaid);
   const interestPending = Math.max(0, generatedInterest - interestPaid);
+  const payableInterestPending = Math.max(0, payableGeneratedInterest - interestPaid);
   const estimated = loan.estimatedPayDate ? parseDate(loan.estimatedPayDate) : null;
   const daysLate = estimated && asOf > estimated && capitalPending + interestPending > 0 ? daysBetween(estimated, asOf) : 0;
   return {
@@ -1425,6 +1434,7 @@ function calculateLoanDebt(loan, asOfDate, excludePaymentId = "") {
     generatedInterest,
     capitalPending,
     interestPending,
+    payableInterestPending,
     totalPaid,
     capitalPaid,
     interestPaid,
@@ -1437,20 +1447,34 @@ function calculateLoanDebt(loan, asOfDate, excludePaymentId = "") {
 }
 
 function findLoanPaidOffDate(loan, payments) {
-  let capitalPaid = 0;
-  let interestPaid = 0;
-  const start = parseDate(loan.disbursementDate);
   for (const payment of payments) {
-    capitalPaid += Number(payment.appliedCapital || 0);
-    interestPaid += Number(payment.appliedInterest || 0);
+    const ledger = calculatePaymentLedger(loan, payments.filter(item => parseDate(item.date) <= parseDate(payment.date)));
     const paymentDate = parseDate(payment.date);
-    const elapsedDays = Math.max(0, daysBetween(start, paymentDate));
-    const generatedInterest = calculateGeneratedInterest(loan, elapsedDays, payment.date);
-    const capitalPending = Math.max(0, loan.principal - capitalPaid);
-    const interestPending = Math.max(0, generatedInterest - interestPaid);
+    const generatedInterest = calculateGeneratedInterest(loan, daysBetween(parseDate(loan.disbursementDate), paymentDate), payment.date);
+    const capitalPending = Math.max(0, loan.principal - ledger.capitalPaid);
+    const interestPending = Math.max(0, generatedInterest - ledger.interestPaid);
     if (capitalPending + interestPending <= 0) return payment.date;
   }
   return "";
+}
+
+function calculatePaymentLedger(loan, payments) {
+  const ledger = { capitalPaid: 0, interestPaid: 0 };
+  payments
+    .slice()
+    .sort((a, b) => parseDate(a.date) - parseDate(b.date))
+    .forEach(payment => {
+      const generatedInterest = calculateGeneratedInterestForPayment(loan, payment.date);
+      const calc = {
+        capitalPending: Math.max(0, loan.principal - ledger.capitalPaid),
+        interestPending: Math.max(0, generatedInterest - ledger.interestPaid),
+        payableInterestPending: Math.max(0, generatedInterest - ledger.interestPaid)
+      };
+      const applied = applyPayment(Number(payment.amount || 0), calc, payment.applyMode || "auto");
+      ledger.capitalPaid += applied.capital;
+      ledger.interestPaid += applied.interest;
+    });
+  return ledger;
 }
 
 function calculateGeneratedInterest(loan, elapsedDays, asOfDate) {
@@ -1459,7 +1483,7 @@ function calculateGeneratedInterest(loan, elapsedDays, asOfDate) {
   if (loan.interestType === "Interes fijo") return loan.principal * rate;
   if (loan.interestType === "Interes porcentual diario") return loan.principal * rate * elapsedDays;
   if (loan.interestType === "Interes porcentual quincenal") return loan.principal * rate * Math.floor(elapsedDays / 15);
-  if (loan.interestType === "Interes porcentual mensual") return loan.principal * rate * fullMonths(loan.disbursementDate, asOfDate || today());
+  if (loan.interestType === "Interes porcentual mensual") return loan.principal * rate * monthlyInterestPeriods(loan, asOfDate || today());
   if (loan.interestType === "Interes personalizado") {
     if (loan.mode === "Pago diario") return loan.principal * rate * elapsedDays;
     if (loan.mode === "Pago quincenal") return loan.principal * rate * Math.floor(elapsedDays / 15);
@@ -1469,18 +1493,50 @@ function calculateGeneratedInterest(loan, elapsedDays, asOfDate) {
   return 0;
 }
 
+function calculateGeneratedInterestForPayment(loan, paymentDate) {
+  if (loan.interestType !== "Interes porcentual mensual") {
+    const elapsedDays = Math.max(0, daysBetween(parseDate(loan.disbursementDate), parseDate(paymentDate)));
+    return calculateGeneratedInterest(loan, elapsedDays, paymentDate);
+  }
+  const rate = Number(loan.interestRate || 0) / 100;
+  if (!rate) return 0;
+  return loan.principal * rate * monthlyInterestPeriods(loan, paymentDate, true);
+}
+
+function monthlyInterestPeriods(loan, asOfDate, includeDueInSameMonth = false) {
+  if (!loan.firstPayDate) return fullMonths(loan.disbursementDate, asOfDate);
+  const asOf = parseDate(asOfDate);
+  let due = loan.firstPayDate;
+  let periods = 0;
+  let guard = 0;
+  while (guard < 600) {
+    const dueDate = parseDate(due);
+    const shouldCount = dueDate <= asOf || (includeDueInSameMonth && due.slice(0, 7) === asOfDate.slice(0, 7));
+    if (!shouldCount) break;
+    periods += 1;
+    due = addByMode(due, loan.mode, 1);
+    guard += 1;
+  }
+  return periods;
+}
+
 function applyPayment(amount, calc, mode) {
   let interest = 0;
   let capital = 0;
+  const interestDue = paymentInterestDue(calc);
   if (mode === "capital") {
     capital = Math.min(amount, calc.capitalPending);
   } else if (mode === "interest") {
-    interest = Math.min(amount, calc.interestPending);
+    interest = Math.min(amount, interestDue);
   } else {
-    interest = Math.min(amount, calc.interestPending);
+    interest = Math.min(amount, interestDue);
     capital = Math.min(amount - interest, calc.capitalPending);
   }
   return { interest, capital };
+}
+
+function paymentInterestDue(calc) {
+  return Math.max(Number(calc.interestPending || 0), Number(calc.payableInterestPending || 0));
 }
 
 function buildScheduleRows(loan) {
