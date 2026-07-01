@@ -290,11 +290,22 @@ async function loadSupabaseSessionUser() {
 
 async function loadSupabaseState() {
   const localState = normalizeState(state);
-  const { data, error } = await db
+  let { data, error } = await db
     .from("loan_app_state")
     .select("data")
     .eq("id", SUPABASE_STATE_ID)
     .maybeSingle();
+
+  if (isSchemaCacheError(error)) {
+    await wait(1500);
+    const retry = await db
+      .from("loan_app_state")
+      .select("data")
+      .eq("id", SUPABASE_STATE_ID)
+      .maybeSingle();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) throw new Error(`Error de Supabase: ${error.message}`);
 
@@ -344,6 +355,14 @@ function authErrorMessage(error) {
   if (message.includes("email not confirmed")) return "El correo existe, pero falta confirmarlo en Supabase Auth.";
   if (message.includes("invalid login credentials")) return "Supabase no reconoce ese correo/contrasena.";
   return error?.message || "No se pudo iniciar sesion.";
+}
+
+function isSchemaCacheError(error) {
+  return String(error?.message || "").toLowerCase().includes("schema cache");
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function profileToUser(profile) {
