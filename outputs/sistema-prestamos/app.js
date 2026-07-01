@@ -949,6 +949,12 @@ function renderMonthlyControl() {
 
   byId("monthlyControlTable").innerHTML = visibleRows.map(row => `
     <tr>
+      <td>
+        <div class="table-actions">
+          <button class="pay-action" onclick="quickInterestPayment('${row.loan.id}')">Pagar</button>
+          <button onclick="openLoanFromMonthly('${row.loan.id}')">Editar</button>
+        </div>
+      </td>
       <td>${escapeHtml(clientName(row.loan.clientId))}</td>
       <td>${row.loan.disbursementDate}</td>
       <td>${formatCurrency(row.loan.principal, row.loan.currency)}</td>
@@ -960,12 +966,6 @@ function renderMonthlyControl() {
       <td>${row.dueDate || "Sin fecha"}</td>
       <td>${row.daysLate > 0 ? row.daysLate : "-"}</td>
       <td><span class="pill ${monthStatusClass(row.monthStatus)}">${row.monthStatus}</span></td>
-      <td>
-        <div class="table-actions">
-          <button class="pay-action" onclick="quickInterestPayment('${row.loan.id}')">Pagar</button>
-          <button onclick="openLoanFromMonthly('${row.loan.id}')">Editar</button>
-        </div>
-      </td>
     </tr>`).join("") || emptyRow(12, "No hay prestamos para el filtro mensual seleccionado.");
 }
 
