@@ -504,7 +504,7 @@ function wireForms() {
 }
 
 function wireFilters() {
-  ["clientSearch", "loanFilter", "loanClientFilter", "reportClient", "reportStatus", "reportMode", "reportCurrency", "debtClient"].forEach(id => {
+  ["clientSearch", "loanFilter", "loanClientFilter", "monthlyClientFilter", "reportClient", "reportStatus", "reportMode", "reportCurrency", "debtClient"].forEach(id => {
     const element = byId(id);
     element.addEventListener("input", renderAll);
     element.addEventListener("change", renderAll);
@@ -836,12 +836,14 @@ function refreshSelects() {
   const currentDebtClient = byId("debtClient").value;
   const currentReportClient = byId("reportClient").value;
   const currentLoanClientFilter = byId("loanClientFilter").value;
+  const currentMonthlyClientFilter = byId("monthlyClientFilter").value;
   const currentPaymentLoan = byId("paymentLoan").value;
   const clientOptions = state.clients.map(client => `<option value="${client.id}">${escapeHtml(client.name)} - ${escapeHtml(client.docNumber)}</option>`).join("");
   byId("loanClient").innerHTML = clientOptions || `<option value="">Sin clientes</option>`;
   byId("debtClient").innerHTML = clientOptions || `<option value="">Sin clientes</option>`;
   byId("reportClient").innerHTML = `<option value="">Todos</option>${clientOptions}`;
   byId("loanClientFilter").innerHTML = `<option value="">Todos los clientes</option>${clientOptions}`;
+  byId("monthlyClientFilter").innerHTML = `<option value="">Todos los clientes</option>${clientOptions}`;
   byId("paymentLoan").innerHTML = state.loans
     .filter(loan => {
       const calc = calculateLoanDebt(loan, asOf);
@@ -854,6 +856,7 @@ function refreshSelects() {
   restoreSelectValue("debtClient", currentDebtClient);
   restoreSelectValue("reportClient", currentReportClient);
   restoreSelectValue("loanClientFilter", currentLoanClientFilter);
+  restoreSelectValue("monthlyClientFilter", currentMonthlyClientFilter);
   restoreSelectValue("paymentLoan", currentPaymentLoan);
 }
 
@@ -913,6 +916,7 @@ function renderMonthlyControl() {
   const asOf = byId("asOfDate").value || today();
   const range = monthlyControlRange(month, asOf);
   const statusFilter = monthlyStatusFilter;
+  const clientFilter = byId("monthlyClientFilter").value;
   document.querySelectorAll(".status-tab").forEach(tab => {
     tab.classList.toggle("active", tab.dataset.monthStatus === statusFilter);
   });
@@ -925,7 +929,9 @@ function renderMonthlyControl() {
       .filter(row => !row.calc.paidOffDate || parseDate(row.calc.paidOffDate) >= range.start)
     : [];
 
-  const visibleRows = rows.filter(row => !statusFilter || row.monthStatus === statusFilter);
+  const visibleRows = rows
+    .filter(row => !clientFilter || row.loan.clientId === clientFilter)
+    .filter(row => !statusFilter || row.monthStatus === statusFilter);
   const disbursedInMonth = rows.filter(row => isDateInControlRange(row.loan.disbursementDate, range));
   const paidInMonth = rows.filter(row => row.monthStatus === "Pagado");
   const lateRows = rows.filter(row => row.monthStatus === "En mora");

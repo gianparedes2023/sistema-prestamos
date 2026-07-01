@@ -101,13 +101,16 @@
       <section class="panel">
         <div class="panel-head">
           <h2>Prestamos del mes</h2>
-          <div class="status-tabs" id="monthlyStatusTabs">
-            <button class="status-tab active" data-month-status="">Todos</button>
-            <button class="status-tab" data-month-status="Pagado">Pagados</button>
-            <button class="status-tab" data-month-status="En mora">En mora</button>
-            <button class="status-tab" data-month-status="Sin pago">Sin pago</button>
-            <button class="status-tab" data-month-status="Pago parcial">Pago parcial</button>
-            <button class="status-tab" data-month-status="Vence este mes">Vencen este mes</button>
+          <div class="monthly-list-controls">
+            <select id="monthlyClientFilter" class="monthly-client-filter"></select>
+            <div class="status-tabs" id="monthlyStatusTabs">
+              <button class="status-tab active" data-month-status="">Todos</button>
+              <button class="status-tab" data-month-status="Pagado">Pagados</button>
+              <button class="status-tab" data-month-status="En mora">En mora</button>
+              <button class="status-tab" data-month-status="Sin pago">Sin pago</button>
+              <button class="status-tab" data-month-status="Pago parcial">Pago parcial</button>
+              <button class="status-tab" data-month-status="Vence este mes">Vencen este mes</button>
+            </div>
           </div>
         </div>
         <div class="table-wrap">
