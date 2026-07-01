@@ -420,7 +420,7 @@ h2 {
 
 .control-toolbar {
   display: grid;
-  grid-template-columns: 255px 190px;
+  grid-template-columns: max-content;
   align-items: end;
   gap: 8px;
 }
