@@ -848,13 +848,17 @@ function refreshSelects() {
       const status = effectiveLoanStatus(loan, calc);
       return status !== "Anulado" && status !== "Pagado";
     })
-    .map((loan, index) => `<option value="${loan.id}">${loanCode(loan, index)} - ${escapeHtml(clientName(loan.clientId))}</option>`)
+    .map((loan, index) => `<option value="${loan.id}">${escapeHtml(paymentLoanOptionLabel(loan, index))}</option>`)
     .join("") || `<option value="">Sin prestamos activos</option>`;
   restoreSelectValue("loanClient", currentLoanClient);
   restoreSelectValue("debtClient", currentDebtClient);
   restoreSelectValue("reportClient", currentReportClient);
   restoreSelectValue("loanClientFilter", currentLoanClientFilter);
   restoreSelectValue("paymentLoan", currentPaymentLoan);
+}
+
+function paymentLoanOptionLabel(loan, index = 0) {
+  return `${loanCode(loan, index)} - ${clientName(loan.clientId)} - ${formatDateShort(loan.disbursementDate)} - ${formatCurrency(loan.principal, loan.currency)}`;
 }
 
 function renderDashboard() {
@@ -1843,6 +1847,12 @@ function sum(values) {
 function formatCurrency(value, currency) {
   const symbols = { PEN: "S/", USD: "$" };
   return `${symbols[currency] || currency || "S/"} ${money.format(Number(value || 0))}`;
+}
+
+function formatDateShort(dateString) {
+  if (!dateString) return "Sin fecha";
+  const [year, month, day] = dateString.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 function parseDate(dateString) {
