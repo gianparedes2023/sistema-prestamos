@@ -1583,6 +1583,17 @@ function isLoanPeriodic(loan) {
 function monthlyDueDate(loan, calc, range) {
   if (!isLoanPeriodic(loan)) return loan.estimatedPayDate || nextPaymentDate(loan, range.cutoff) || "";
   const dueInControlMonth = periodicDueDateInRange(loan, range);
+  const queryCutoff = range.asOf || range.cutoff;
+  const overdueDueAtQuery = lastPeriodicDueDate(loan, queryCutoff);
+  if (
+    dueInControlMonth &&
+    calc.interestPending > 0 &&
+    parseDate(dueInControlMonth) > queryCutoff &&
+    overdueDueAtQuery &&
+    parseDate(overdueDueAtQuery) < queryCutoff
+  ) {
+    return overdueDueAtQuery;
+  }
   if (dueInControlMonth) return dueInControlMonth;
   if (calc.interestPending <= 0 && calc.capitalPending > 0) {
     return nextPeriodicDueDate(loan, range.cutoff) || loan.estimatedPayDate || "";
