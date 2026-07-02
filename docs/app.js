@@ -1585,7 +1585,8 @@ function monthlyDueDate(loan, calc, range) {
 function monthlyDaysLate(loan, calc, paidThisMonth, dueDate, range) {
   if (!dueDate || calc.totalDebt <= 0) return 0;
   if (calc.interestPending <= 0 && paidThisMonth > 0) return 0;
-  return parseDate(dueDate) < range.cutoff ? daysBetween(parseDate(dueDate), range.cutoff) : 0;
+  const lateCutoff = range.asOf || range.cutoff;
+  return parseDate(dueDate) < lateCutoff ? daysBetween(parseDate(dueDate), lateCutoff) : 0;
 }
 
 function periodicStartDate(loan) {
@@ -1923,6 +1924,8 @@ function monthlyControlRange(month, asOfDate) {
   return {
     ...range,
     hasStarted: asOf >= range.start,
+    asOf,
+    asOfString: asOf.toISOString().slice(0, 10),
     cutoff,
     cutoffString: cutoff.toISOString().slice(0, 10)
   };
