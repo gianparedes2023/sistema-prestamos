@@ -1023,9 +1023,10 @@ function buildMonthlyLoanRow(loan, range) {
 
 function monthlyLoanStatus(loan, calc, paidThisMonth, dueDate, dueInMonth, payments, range, daysLate) {
   const lastPaymentInMonth = payments.length ? payments[payments.length - 1] : null;
+  const isPastDueAtQuery = dueDate && parseDate(dueDate) < (range.asOf || range.cutoff) && calc.totalDebt > 0;
   if (calc.totalDebt <= 0 && (lastPaymentInMonth || loan.status === "Pagado")) return "Pagado";
   if (calc.interestPending <= 0 && paidThisMonth > 0) return "Al dia";
-  if (daysLate > 0) return "En mora";
+  if (daysLate > 0 || isPastDueAtQuery) return "En mora";
   if (paidThisMonth > 0) return "Pago parcial";
   if (dueInMonth) return "Vence este mes";
   if (dueDate && parseDate(dueDate) > range.cutoff) return "Al dia";
