@@ -1,6 +1,7 @@
 const STORAGE_KEY = "loanControlSystem.v1";
 const TOKEN_KEY = "loanControlSystem.token";
 const SUPABASE_STATE_ID = "main";
+const APP_VERSION = "v20260702-07";
 const supabaseConfig = window.APP_SUPABASE || {};
 const supabaseReady = Boolean(
   window.supabase &&
@@ -34,6 +35,7 @@ const money = new Intl.NumberFormat("es-PE", { minimumFractionDigits: 2, maximum
 
 document.addEventListener("DOMContentLoaded", () => {
   if (supabaseReady || (API_BASE && !authToken)) setAuthLocked(true);
+  showAppVersion();
   byId("asOfDate").value = today();
   byId("controlMonth").value = today().slice(0, 7);
   mountLoanModal();
@@ -46,6 +48,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function byId(id) {
   return document.getElementById(id);
+}
+
+function showAppVersion() {
+  let version = byId("appVersion");
+  if (!version) {
+    version = document.createElement("small");
+    version.id = "appVersion";
+    version.className = "app-version";
+    byId("viewSubtitle")?.insertAdjacentElement("afterend", version);
+  }
+  version.textContent = APP_VERSION;
 }
 
 function today() {
