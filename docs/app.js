@@ -560,6 +560,7 @@ function saveLoan(event) {
     alert("Registre al menos un cliente.");
     return;
   }
+  autoLoanDates();
   const id = byId("loanId").value || uid("PRE");
   const existingLoan = state.loans.find(loan => loan.id === id);
   const payload = {
@@ -659,14 +660,15 @@ function autoLoanDates() {
   const mode = byId("loanMode").value;
   const isPeriodic = isPeriodicMode(mode);
   const installments = Number(byId("installments").value || 0);
-  const intervalDays = paymentIntervalDays();
 
   if (isPeriodic || mode === "Con cronograma") {
     byId("hasSchedule").value = installments > 0 ? "true" : "false";
-    byId("firstPayDate").value = addDays(disbursement, intervalDays);
+    const firstPayDate = addByMode(disbursement, mode, 1);
     const periods = Math.max(installments, 1);
-    byId("termDays").value = String(intervalDays * periods);
-    byId("estimatedPayDate").value = addDays(disbursement, intervalDays * periods);
+    const estimatedPayDate = addByMode(disbursement, mode, periods);
+    byId("firstPayDate").value = firstPayDate;
+    byId("termDays").value = String(daysBetween(parseDate(disbursement), parseDate(estimatedPayDate)));
+    byId("estimatedPayDate").value = estimatedPayDate;
     renderLoanSummary();
     return;
   }
@@ -1295,8 +1297,8 @@ function renderLoanFormSchedule() {
   if (!table) return;
   const loanId = byId("loanId").value;
   const savedLoan = state.loans.find(item => item.id === loanId);
-  const loan = savedLoan || loanFromForm();
-  if (!loan || !loan.hasSchedule || !loan.installments || !loan.firstPayDate) {
+  const loan = loanFromForm() || savedLoan;
+  if (!loan || !loan.hasSchedule || !loan.installments || !periodicStartDate(loan)) {
     table.innerHTML = emptyRow(7, "Este prestamo no tiene cronograma.");
     return;
   }
@@ -1504,9 +1506,10 @@ function calculateGeneratedInterestForPayment(loan, paymentDate) {
 }
 
 function monthlyInterestPeriods(loan, asOfDate, includeDueInSameMonth = false) {
-  if (!loan.firstPayDate) return fullMonths(loan.disbursementDate, asOfDate);
+  const firstDue = periodicStartDate(loan);
+  if (!firstDue) return fullMonths(loan.disbursementDate, asOfDate);
   const asOf = parseDate(asOfDate);
-  let due = loan.firstPayDate;
+  let due = firstDue;
   let periods = 0;
   let guard = 0;
   while (guard < 600) {
@@ -1540,13 +1543,14 @@ function paymentInterestDue(calc) {
 }
 
 function buildScheduleRows(loan) {
-  if (!loan.hasSchedule || !loan.installments || !loan.firstPayDate) return [];
+  const firstDue = periodicStartDate(loan);
+  if (!loan.hasSchedule || !loan.installments || !firstDue) return [];
   const calc = calculateLoanDebt(loan, byId("asOfDate").value || today());
   const total = loan.principal + calculateGeneratedInterest(loan, daysBetween(parseDate(loan.disbursementDate), parseDate(loan.estimatedPayDate || today())), loan.estimatedPayDate || today());
   const quota = total / loan.installments;
   const rows = [];
   for (let i = 1; i <= loan.installments; i++) {
-    const due = addByMode(loan.firstPayDate, loan.mode, i - 1);
+    const due = addByMode(firstDue, loan.mode, i - 1);
     const paid = Math.min(quota, Math.max(0, calc.totalPaid - quota * (i - 1)));
     const balance = Math.max(0, quota - paid);
     const status = balance <= 0 ? "Pagado" : parseDate(due) < parseDate(byId("asOfDate").value || today()) ? "Vencido" : paid > 0 ? "Parcial" : "Pendiente";
@@ -1585,6 +1589,7 @@ function monthlyDaysLate(loan, calc, paidThisMonth, dueDate, range) {
 }
 
 function periodicStartDate(loan) {
+  if (isLoanPeriodic(loan)) return addByMode(loan.disbursementDate, loan.mode, 1);
   if (loan.firstPayDate) return loan.firstPayDate;
   return addByMode(loan.disbursementDate, loan.mode, 1);
 }
@@ -1626,10 +1631,11 @@ function nextPeriodicDueDate(loan, cutoff) {
 }
 
 function nextPaymentDate(loan, asOf) {
-  if (!loan.firstPayDate) return loan.estimatedPayDate || "";
+  const firstDue = periodicStartDate(loan);
+  if (!firstDue) return loan.estimatedPayDate || "";
   if (!loan.hasSchedule) return loan.estimatedPayDate || "";
   for (let i = 0; i < Math.max(loan.installments || 0, 1); i++) {
-    const due = addByMode(loan.firstPayDate, loan.mode, i);
+    const due = addByMode(firstDue, loan.mode, i);
     if (parseDate(due) >= asOf) return due;
   }
   return "";
