@@ -1016,7 +1016,11 @@ function buildMonthlyLoanRow(loan, range) {
   const paidThisMonth = sum(payments.map(payment => payment.amount));
   const dueDate = monthlyDueDate(loan, calc, range);
   const dueInMonth = dueDate ? isDateInRange(dueDate, range) : false;
-  const daysLate = monthlyDaysLate(loan, calc, paidThisMonth, dueDate, range);
+  const queryCutoff = range.asOf || range.cutoff;
+  const queryDaysLate = dueDate && calc.totalDebt > 0 && parseDate(dueDate) < queryCutoff
+    ? daysBetween(parseDate(dueDate), queryCutoff)
+    : 0;
+  const daysLate = Math.max(monthlyDaysLate(loan, calc, paidThisMonth, dueDate, range), queryDaysLate);
   const monthStatus = monthlyLoanStatus(loan, calc, paidThisMonth, dueDate, dueInMonth, payments, range, daysLate);
   return { loan, calc, payments, paidThisMonth, dueDate, dueInMonth, daysLate, monthStatus };
 }
