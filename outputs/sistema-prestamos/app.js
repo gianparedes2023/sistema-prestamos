@@ -1,7 +1,7 @@
 const STORAGE_KEY = "loanControlSystem.v1";
 const TOKEN_KEY = "loanControlSystem.token";
 const SUPABASE_STATE_ID = "main";
-const APP_VERSION = "v20260702-07";
+const APP_VERSION = "v20260702-08";
 const supabaseConfig = window.APP_SUPABASE || {};
 const supabaseReady = Boolean(
   window.supabase &&
